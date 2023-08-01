@@ -5,6 +5,7 @@ const generateToken = require("../config/jwtToken");
 const isValid = require("../utils/validateMongoID");
 const refreshToken = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto")
 
 const createUser = async (req, res, next) => {
   //try{
@@ -75,33 +76,32 @@ const handleRefreshToken = async (req, res, next) => {
   res.send({ accessToken });
 };
 
-const logout = async (req,res,next)=>{
+const logout = async (req, res, next) => {
   const { refreshToken } = req.cookies;
   if (!refreshToken) throw new Error("No Refresh token in cookies");
   const users = await user.findOne({ refreshToken });
   if (!users) {
-    res.clearCookie("refreshToken",{
+    res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure:true
+      secure: true,
     });
-    return res.sendStatus(204) // Forbidden
+    return res.sendStatus(204); // Forbidden
   }
 
   const updateRefreshToken = await user.findOneAndUpdate(
     { _id: users?._id },
-    { refreshToken: '' },
+    { refreshToken: "" },
     {
       new: true,
     }
   );
 
-  res.clearCookie("refreshToken",{
+  res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure:true
+    secure: true,
   });
-  return res.sendStatus(204) // Forbidden
-
-}
+  return res.sendStatus(204); // Forbidden
+};
 
 const getAllUser = async (req, res, next) => {
   const allUser = await user.find({});
@@ -181,6 +181,49 @@ const unblockUser = async (req, res, next) => {
   res.send(unblockUser);
 };
 
+const updatePassword = async (req, res, next) => {
+  const { _id } = req.user;
+  const { password } = req.body;
+  await isValid(_id);
+  const usr = await user.findById({ _id });
+  if (password) {
+    usr.password = password;
+    const updatedPassword = await usr.save();
+    return res.send(updatedPassword);
+  }
+  res.send(usr);
+};
+
+const forgotPassword = async (req, res,next) => {
+
+  const {email} = req.body
+  const usr = await user.findOne({ email: email})
+  if(!usr){
+    throw new Error("Email is not valid to reset the password")
+  }
+  const token = await usr.createPasswordResetToken() 
+  await usr.save()                                                                                                                         
+// Here Send email with URL+token as querry param
+// check 4.05.29 minutes for reference
+res.json(token)
+}
+
+const resetPassword = async (req, res) => {
+  const {password} = req.body
+  const token = req.params
+  const hashedToken = crypto.createHash("sha256").update(token).digest('hex');
+  const usr = await user.find({passwordResetToken:hashedToken,passwordResetExpires:{$ge:Date.now()}})
+  if(!usr) throw new Error("not an vaid token")
+  usr.password = password
+  usr.passwordResetToken = undefined
+  usr.passwordResetExpires = undefined
+
+  await usr.save()
+  res.json("Password reseted Successfully")
+
+
+}
+
 module.exports = {
   createUser,
   login,
@@ -191,5 +234,8 @@ module.exports = {
   blockUser,
   unblockUser,
   handleRefreshToken,
-  logout
+  logout,
+  updatePassword,
+  forgotPassword,
+  resetPassword
 };

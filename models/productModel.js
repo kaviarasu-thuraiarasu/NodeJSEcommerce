@@ -22,6 +22,7 @@ var productSchema = new mongoose.Schema({
     price:{
         type:Number,
         required:true,
+        select:false // this will help to hide this properties while send the response.
     },
     category:{
         type:String,//mongoose.Schema.Types.ObjectId,
