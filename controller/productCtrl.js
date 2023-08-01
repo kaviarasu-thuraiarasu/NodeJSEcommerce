@@ -30,6 +30,29 @@ const updateProduct = async (req,res,next)=>{
     await productSchema.findByIdAndUpdate({_id:id},req.body,{new:true})
     res.send("updated Successfully")
 }
+
+const addTowishlist = async (req,res,next)=>{
+    const {id} = req.params
+    const {prodId} = req.body
+    const user = await User.findById(id)
+    const alreadyAdded = await user.wishlist.find((id)=> id.toString() === prodId.toString())
+    if(alreadyAdded){
+        const wish = await User.findByIdAndUpdate(id,{
+            $pull:{wishlist:prodId}
+        },{
+            new:true
+        })
+        res.send("updated Successfully")
+    }else{
+        const wish = await User.findByIdAndUpdate(id,{
+            $pusj:{wishlist:prodId}
+        },{
+            new:true
+        })
+        res.send("updated Successfully")
+
+    }
+}
     
 
 module.exports = {

@@ -1,4 +1,4 @@
-const Category = require("../models/productcategoryModel")
+const Category = require("../models/blogcategoryModel")
 const isValid = require("../utils/validateMongoID");
 
 const createCategory = async (req, res, next) => {
@@ -40,11 +40,7 @@ const updateCategory = async (req, res, next) => {
         const {id} = req.params
        // isValid(id)
         const category = await Category.findByIdAndUpdate(id,req.body,{new:true})
-        if(category){
-            return res.json("Updated Successfully")
-        }
-        res.json("Invalid ID")
-        
+        res.json("Updated Successfully")
     }catch(e){
         throw new Error(e.message)
     }
