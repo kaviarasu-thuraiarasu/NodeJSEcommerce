@@ -6,6 +6,8 @@ const isValid = require("../utils/validateMongoID");
 const refreshToken = require("../config/refreshToken");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto")
+const Cart = require("../models/cartModel")
+const Product = require("../models/productModel")
 
 const createUser = async (req, res, next) => {
   //try{
@@ -224,6 +226,71 @@ const resetPassword = async (req, res) => {
 
 }
 
+const saveAddress = async (req, res) => {
+  const {id} = req.user
+  const {address} = req.body
+  const usr = await user.findByIdAndUpdate(id,{
+    $push:{address:address}
+  },{new:true})
+
+  res.json(usr)
+
+}
+
+const userCart = async (req, res) => {
+  let product = []
+  const {id} = req.user
+  isValid(id)
+  const {cart} = req.body
+  const usr = await user.findById(id)
+  const alreadyCartExist = await Cart.findOne({orderBy:user._id})
+  console.log(cart)
+  if(alreadyCartExist){
+    alreadyCartExist.remove()
+  }else{
+
+    for(i=0;i<cart.length;i++){
+      let obj = {}
+      obj.product = cart[i]._id
+      obj.quantity = cart[i].quantity
+      obj.color = cart[i].color
+      let getPrice = await Product.findById(cart[i]._id).select('price').exec()
+      obj.price = getPrice.price
+      product.push(obj)
+    }
+    let cartTotal = 0
+    for (i=0;i<product.length;i++){
+      cartTotal = cartTotal + product[i].price * product[i].quantity
+    }
+
+    const createModel  = await new Cart({
+      products:product,
+      cartTotal,
+      orderBy : id
+
+    }).save()
+    res.send(createModel)
+  }
+ res.send("Hello cart")
+}
+
+const getCart = async (req, res) => {
+  const {id} = req.user
+  const cart = await Cart.findOne({orderBy:id}).populate('products.product')
+  res.send(cart)
+
+}
+
+const emptyCart = async (req, res)=>{
+  const {id} = req.user
+
+  const usr = await user.findOne({_id:id})
+  console.log(usr.id)
+  const cart = await Cart.findOneAndRemove({orderBy:usr.id})
+  res.send(cart)
+
+}
+
 module.exports = {
   createUser,
   login,
@@ -237,5 +304,9 @@ module.exports = {
   logout,
   updatePassword,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  saveAddress,
+  userCart,
+  getCart,
+  emptyCart
 };
